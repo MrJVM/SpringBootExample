@@ -35,6 +35,8 @@ public class GreetingController {
                                   @RequestBody List<User> users,
                                   @RequestParam(value = "apiVersion") String apiVersion) {
 
+        String extClientId = transformClientId(nameStream, externalClientId);
+        System.out.println("extClientId = "+extClientId);
         StringBuilder sb = new StringBuilder();
         switch(apiVersion) {
             case "1.0":
@@ -48,6 +50,18 @@ public class GreetingController {
         }
 
         return sb.toString();
+    }
+
+    // This method takes the externalClientId (9284|22222AB) and transforms it based on the nameStream
+    private String transformClientId(String nameStream, String externalClientId) {
+        switch(nameStream) {
+            case "patient":
+                return externalClientId.split("|")[1];
+            case "Steve Jones":
+                return externalClientId.split("#")[1];
+            default:
+                return externalClientId;
+        }
     }
 
     private StringBuilder buildJsonResponse(List<User> users) {

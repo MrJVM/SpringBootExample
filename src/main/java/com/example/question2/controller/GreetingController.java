@@ -4,10 +4,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.example.question2.model.*;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
 
@@ -19,28 +16,35 @@ public class GreetingController {
 
     // REST Requests
     @GetMapping("/patient")
-    public Greeting getPatient(@RequestParam(value = "name") String name) {
-        return new Greeting(counter.incrementAndGet(), String.format(template, name));
+    public Greeting getPatient(@RequestParam(value = "nameStream") String nameStream,
+                               @RequestParam(value = "externalClientId") String externalClientId,
+                               @RequestParam(value = "apiVersion") String apiVersion) {
+
+        return new Greeting(counter.incrementAndGet(), "jsonResponse");
     }
 
     // Versioning can be added at the URL level , this would create many different endpoints with each API version change
     // I opted to use a query parameter instead see below
-    @PostMapping("/patient")
+    @RequestMapping(value = { "/patient" },
+            method = RequestMethod.POST,
+            produces = "application/json",
+            consumes = "application/json")
+    @ResponseBody
     public String createPatient(@RequestParam(value = "nameStream") String nameStream,
                                   @RequestParam(value = "externalClientId") String externalClientId,
-                                  @RequestParam(value = "users") List<User> users,
+                                  @RequestBody List<User> users,
                                   @RequestParam(value = "apiVersion") String apiVersion) {
 
-        StringBuilder sb = buildJsonResponse(users);
+        StringBuilder sb = new StringBuilder();
         switch(apiVersion) {
             case "1.0":
-                buildJsonResponse(users);
+                sb.append(buildJsonResponse(users));
                 break;
             case "1.2":
-                buildJsonResponseV2();
+                sb.append(buildJsonUnsupportedResponse(apiVersion));
                 break;
             default:
-                sb.append(apiVersion).append(" is not a supported API version.");
+                sb.append(buildJsonUnsupportedResponse(apiVersion));
         }
 
         return sb.toString();
@@ -48,19 +52,17 @@ public class GreetingController {
 
     private StringBuilder buildJsonResponse(List<User> users) {
         StringBuilder sb = new StringBuilder();
+        sb.append("{[");
         for (User u: users) {
-            sb.append("<h4>")
-                    .append("UserId:").append(u.getId())
-                    .append(" UserName:").append(u.getName())
-                    .append("</h4>");
+            sb.append(u.toJSON());
         }
+        sb.append("]}");
         return sb;
     }
 
-    private StringBuilder buildJsonResponseV2() {
-        return new StringBuilder("<h2>Version two is not supported yet.</h2>");
+    private String buildJsonUnsupportedResponse(String apiVersion) {
+        return new ErrorMessage("Version " + apiVersion +" is not supported yet.").toJSON();
     }
-
 
     // Websocket Approach
     // I decided to implement the websocket version of this too.
